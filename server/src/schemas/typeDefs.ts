@@ -11,6 +11,15 @@ const typeDefs = `
         savedBooks: [Book]
     }
 
+    input BookInput {
+        authors: [String]
+        description: String
+        title: String
+        bookId: String
+        image: String
+        link: String
+    }
+
     type Book {
         bookId: ID
         authors: [String]
@@ -32,5 +41,6 @@ const typeDefs = `
         removeBook(bookId: ID!): User
     }
 `;
+
 
 export default typeDefs;

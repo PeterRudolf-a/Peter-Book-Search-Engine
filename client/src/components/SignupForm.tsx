@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
-
+import { ADD_USER } from '../utils/mutations';
 import { createUser } from '../utils/API';
 import Auth from '../utils/auth';
 import type { User } from '../models/User';
@@ -31,6 +31,7 @@ const SignupForm = ({}: { handleModalClose: () => void }) => {
     }
 
     try {
+      const [ADD_USER] = useMutation(ADD_USER);
       const response = await createUser(userFormData);
 
       if (!response.ok) {

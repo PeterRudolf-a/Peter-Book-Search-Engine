@@ -1,20 +1,17 @@
 import User from "../models/User";
-import Book from "../models/Book";
 import { signToken, AuthenticationError } from "../services/auth";
 
 interface Context {
-  user: User;
-  book: Book;
-  token: string;
+    user: any;
 }
 
 interface BookInput {
-  authors: string[];
-  description: string;
-  title: string;
-  bookId: string;
-  image: string;
-link: string;
+    authors: string[];
+    description: string;
+    title: string;
+    bookId: string;
+    image: string;
+    link: string;
 }
 
 interface AuthInput {
@@ -30,11 +27,6 @@ interface RemoveBookInput {
     bookId: string;
 }
 
-interface LoginInput {
-    email: string;
-    password: string;
-}
-
 interface AddUserInput {
     username: string;
     email: string;
@@ -44,65 +36,61 @@ interface AddUserInput {
 const resolvers = {
     Query: {
         me: async (_: any, __: any, context: Context) => {
-        if (context.user) {
-            return context.user;
-        }
-        throw new AuthenticationError("Not logged in");
+            if (context.user) {
+                return context.user;
+            }
+            throw new AuthenticationError("Not logged in");
         },
     },
     Mutation: {
         login: async (_: any, { email, password }: AuthInput) => {
-        const user = await User.findOne({ email });
-        if (!user) {
-            throw new AuthenticationError("Incorrect credentials");
-        }
-        const correctPw = await user.isCorrectPassword(password);
-        if (!correctPw) {
-            throw new AuthenticationError("Incorrect credentials");
-        }
-        const token = signToken(user);
-        return { token, user };
+            const user = await User.findOne({ email });
+            if (!user) {
+                throw new AuthenticationError("Incorrect credentials");
+            }
+            const correctPw = await user.isCorrectPassword(password);
+            if (!correctPw) {
+                throw new AuthenticationError("Incorrect credentials");
+            }
+            const token = signToken(user.username, user.password, user._id);
+            return { token, user };
         },
         addUser: async (_: any, { username, email, password }: AddUserInput) => {
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            throw new AuthenticationError("User already exists");
-        }
-        saveBook: async (_: any, { bookData }: SaveBookInput, context: Context) => {
-        if (context.user) {
-            // Validate bookData
-            if (!bookData.title || !bookData.bookId || !bookData.authors || !bookData.description) {
-                throw new Error("Invalid book data");
+            const existingUser = await User.findOne({ email });
+            if (existingUser) {
+                throw new AuthenticationError("User already exists");
             }
-            const updatedUser = await User.findByIdAndUpdate(
-            { _id: context.user._id },
-            { $addToSet: { savedBooks: bookData } },
-            { new: true }
-            );
-            return updatedUser;
-        }
-        throw new AuthenticationError("You need to be logged in!");
+            const newUser = await User.create({ username, email, password });
+            const token = signToken(newUser.username, newUser.password, newUser._id);
+            return { token, user: newUser };
         },
-            return updatedUser;
-        }
-            const bookExists = context.user.savedBooks.some(book => book.bookId === bookId);
-            if (!bookExists) {
-                throw new AuthenticationError("Book not found in saved books");
+        saveBook: async (_: any, { bookData }: SaveBookInput, context: Context) => {
+            if (context.user) {
+                // Validate bookData
+                if (!bookData.title || !bookData.bookId || !bookData.authors || !bookData.description) {
+                    throw new Error("Invalid book data");
+                }
+                const updatedUser = await User.findByIdAndUpdate(
+                    { _id: context.user._id },
+                    { $addToSet: { savedBooks: bookData } },
+                    { new: true }
+                );
+                return updatedUser;
             }
+            throw new AuthenticationError("You need to be logged in!");
         },
         removeBook: async (_: any, { bookId }: RemoveBookInput, context: Context) => {
-        if (context.user) {
-            const updatedUser = await User.findOneAndUpdate(
-            { _id: context.user._id },
-            { $pull: { savedBooks: { bookId } } },
-            { new: true }
-            );
-            return updatedUser;
-        }
-        throw new AuthenticationError("You need to be logged in!");
+            if (context.user) {
+                const updatedUser = await User.findOneAndUpdate(
+                    { _id: context.user._id },
+                    { $pull: { savedBooks: { bookId } } },
+                    { new: true }
+                );
+                return updatedUser;
+            }
+            throw new AuthenticationError("You need to be logged in!");
         },
     },
-}
-
+};
 
 export default resolvers;
