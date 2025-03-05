@@ -1,44 +1,51 @@
-import type { Request, Response, NextFunction } from 'express';
+import { Request } from 'express';
 import jwt from 'jsonwebtoken';
-import { GraphQLError } from 'graphql';// import GraphQLError from 'graphql'
+import { GraphQLError } from 'graphql'; // Import the GraphQLError class
 import dotenv from 'dotenv';
 dotenv.config();
 
 interface JwtPayload {
   _id: unknown;
   username: string;
-  email: string,
+  email: string;
 }
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
+// Verify the JWT token
+export const authenticateToken = async (req: Request): Promise<JwtPayload | null> => {
+  const authHeader = req.headers.authorization; // Get the authorization header
 
-  if (authHeader) {
-    const token = authHeader.split(' ')[1];
+  // If the token is missing, throw an error
+  if (!authHeader) {
+    throw new AuthenticationError('Authorization token missing');
+  }
 
-    const secretKey = process.env.JWT_SECRET_KEY || '';
+  // Split the token to get the actual token
+  const token = authHeader.split(' ')[1];
 
-    jwt.verify(token, secretKey, (err, user) => {
-      if (err) {
-        return res.sendStatus(403); // Forbidden
-      }
+  // If the token is missing, throw an error
+  if (!token) {
+    throw new AuthenticationError('Authorization token malformed');
+  }
 
-      req.user = user as JwtPayload;
-      return next();
-    });
-  } else {
-    res.sendStatus(401); // Unauthorized
+  const secretKey = process.env.JWT_SECRET_KEY || '';
+
+  try {
+    const decoded = jwt.verify(token, secretKey) as JwtPayload;
+    return decoded;  // Return the user from the decoded token
+  } catch (err) {
+    throw new AuthenticationError('Invalid or expired token');
   }
 };
 
-export const signToken = (username: string, email: string, _id: unknown) => {
+// Sign a new JWT token
+export const signToken = (username: string, email: string, _id: unknown): string => {
   const payload = { username, email, _id };
   const secretKey = process.env.JWT_SECRET_KEY || '';
 
   return jwt.sign(payload, secretKey, { expiresIn: '1h' });
 };
 
-// Update the auth middleware function to work with the GraphQL API
+// Custom error class for authentication errors that extends the GraphQLError class
 export class AuthenticationError extends GraphQLError {
   constructor(message: string) {
     super(message, undefined, undefined, undefined, ['UNAUTHENTICATED']);

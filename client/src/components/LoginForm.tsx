@@ -1,17 +1,23 @@
-// see SignupForm.js for comments
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
-import { LOGIN_USER } from '../utils/mutations';
-import { loginUser } from '../utils/API';
+import { useMutation } from '@apollo/client'; // Import the useMutation hook
+import { LOGIN_USER } from '../utils/mutations'; // Import the LOGIN_USER mutation
 import Auth from '../utils/auth';
 import type { User } from '../models/User';
 
-// biome-ignore lint/correctness/noEmptyPattern: <explanation>
-const LoginForm = ({}: { handleModalClose: () => void }) => {
-  const [userFormData, setUserFormData] = useState<User>({ username: '', email: '', password: '', savedBooks: [] });
+const LoginForm = ({ handleModalClose }: { handleModalClose: () => void }) => {
+  const [userFormData, setUserFormData] = useState<User>({
+    username: '',
+    email: '',
+    password: '',
+    savedBooks: [],
+  });
   const [validated] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
+
+  // Use the useMutation hook to execute the LOGIN_USER mutation
+  const [loginUserMutation] = useMutation(LOGIN_USER);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -21,7 +27,7 @@ const LoginForm = ({}: { handleModalClose: () => void }) => {
   const handleFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // check if form has everything (as per react-bootstrap docs)
+    // Check if form is valid
     const form = event.currentTarget;
     if (form.checkValidity() === false) {
       event.preventDefault();
@@ -29,20 +35,24 @@ const LoginForm = ({}: { handleModalClose: () => void }) => {
     }
 
     try {
-      const [LOGIN_USER] = useMutation(LOGIN_USER);
-      const response = await loginUser(userFormData);
+      // Execute the LOGIN_USER mutation and pass in the required variables
+      const { data } = await loginUserMutation({
+        variables: { ...userFormData },
+      });
 
-      if (!response.ok) {
-        throw new Error('something went wrong!');
+      if (data?.login?.token) {
+        const { token } = data.login;
+        Auth.login(token); // Log the user in using the received token
+        handleModalClose(); // Close the modal after successful login
+      } else {
+        throw new Error('Something went wrong!');
       }
-
-      const { token } = await response.json();
-      Auth.login(token);
     } catch (err) {
       console.error(err);
-      setShowAlert(true);
+      setShowAlert(true); // Show alert if an error occurs
     }
 
+    // Reset form data after submission
     setUserFormData({
       username: '',
       email: '',

@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
-import { ADD_USER } from '../utils/mutations';
-import { createUser } from '../utils/API';
+import { useMutation } from '@apollo/client'; // import the useMutation hook from Apollo Client
+import { ADD_USER } from '../utils/mutations'; // import the ADD_USER mutation
 import Auth from '../utils/auth';
 import type { User } from '../models/User';
 
-// biome-ignore lint/correctness/noEmptyPattern: <explanation>
-const SignupForm = ({}: { handleModalClose: () => void }) => {
+const SignupForm = ({ handleModalClose }: { handleModalClose: () => void }) => {
   // set initial form state
   const [userFormData, setUserFormData] = useState<User>({ username: '', email: '', password: '', savedBooks: [] });
   // set state for form validation
   const [validated] = useState(false);
   // set state for alert
   const [showAlert, setShowAlert] = useState(false);
+
+  // Use the ADD_USER mutation hook
+  const [addUser] = useMutation(ADD_USER);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -31,20 +33,24 @@ const SignupForm = ({}: { handleModalClose: () => void }) => {
     }
 
     try {
-      const [ADD_USER] = useMutation(ADD_USER);
-      const response = await createUser(userFormData);
+      // Execute the ADD_USER mutation
+      const { data } = await addUser({
+        variables: { ...userFormData },
+      });
 
-      if (!response.ok) {
-        throw new Error('something went wrong!');
+      if (data?.addUser?.token) {
+        const { token } = data.addUser;
+        Auth.login(token); // Log the user in
+        handleModalClose(); // Close the modal after successful signup
+      } else {
+        throw new Error('Something went wrong!');
       }
-
-      const { token } = await response.json();
-      Auth.login(token);
     } catch (err) {
       console.error(err);
-      setShowAlert(true);
+      setShowAlert(true); // Show alert if there is an error
     }
 
+    // Reset form data after submission
     setUserFormData({
       username: '',
       email: '',

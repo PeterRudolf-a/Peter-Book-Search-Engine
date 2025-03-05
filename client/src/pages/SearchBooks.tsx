@@ -1,37 +1,31 @@
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
-import {
-  Container,
-  Col,
-  Form,
-  Button,
-  Card,
-  Row
-} from 'react-bootstrap';
-import { useMutation } from '@apollo/client';
+import { Container, Col, Form, Button, Card, Row } from 'react-bootstrap';
+import { useMutation } from '@apollo/client'; // Import the useMutation hook from Apollo Client
 import Auth from '../utils/auth';
-import { saveBook, searchGoogleBooks } from '../utils/API';
-import { SAVE_BOOK } from '../utils/mutations';
+import { SAVE_BOOK } from '../utils/mutations'; // Import the SAVE_BOOK mutation
 import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
 import type { Book } from '../models/Book';
 import type { GoogleAPIBook } from '../models/GoogleAPIBook';
+import { searchGoogleBooks } from '../utils/API';
 
 const SearchBooks = () => {
-  // create state for holding returned google api data
+  // State for holding returned Google API data
   const [searchedBooks, setSearchedBooks] = useState<Book[]>([]);
-  // create state for holding our search field data
+  // State for holding our search field data
   const [searchInput, setSearchInput] = useState('');
-
-  // create state to hold saved bookId values
+  // State to hold saved bookId values
   const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
 
-  // set up useEffect hook to save `savedBookIds` list to localStorage on component unmount
-  // learn more here: https://reactjs.org/docs/hooks-effect.html#effects-with-cleanup
+  // Set up useEffect hook to save `savedBookIds` list to localStorage on component unmount
   useEffect(() => {
     return () => saveBookIds(savedBookIds);
-  });
+  }, [savedBookIds]);
 
-  // create method to search for books and set state on form submit
+  // useMutation hook to execute the SAVE_BOOK mutation
+  const [saveBookMutation] = useMutation(SAVE_BOOK);
+
+  // Method to search for books and set state on form submit
   const handleFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -43,7 +37,7 @@ const SearchBooks = () => {
       const response = await searchGoogleBooks(searchInput);
 
       if (!response.ok) {
-        throw new Error('something went wrong!');
+        throw new Error('Something went wrong!');
       }
 
       const { items } = await response.json();
@@ -63,12 +57,12 @@ const SearchBooks = () => {
     }
   };
 
-  // create function to handle saving a book to our database
+  // Function to handle saving a book to our database using the Apollo useMutation hook
   const handleSaveBook = async (bookId: string) => {
-    // find the book in `searchedBooks` state by the matching id
+    // Find the book in `searchedBooks` state by the matching id
     const bookToSave: Book = searchedBooks.find((book) => book.bookId === bookId)!;
 
-    // get token
+    // Get the token
     const token = Auth.loggedIn() ? Auth.getToken() : null;
 
     if (!token) {
@@ -76,20 +70,19 @@ const SearchBooks = () => {
     }
 
     try {
-      //const response = await saveBook(bookToSave, token);
-      const [SAVE_BOOK] = useMutation();
-      const response = await SAVE_BOOK({
-        variables: { book: bookToSave, token: token }
+      // Execute the SAVE_BOOK mutation using Apollo's useMutation hook
+      const response = await saveBookMutation({
+        variables: { book: bookToSave },
       });
 
-      if (!response.ok) {
-        throw new Error('something went wrong!');
+      // If the mutation was successful, save the book id to the state
+      if (response.data) {
+        setSavedBookIds([...savedBookIds, bookToSave.bookId]);
+      } else {
+        throw new Error('Something went wrong with saving the book.');
       }
-
-      // if book successfully saves to user's account, save book id to state
-      setSavedBookIds([...savedBookIds, bookToSave.bookId]);
     } catch (err) {
-      console.error(err);
+      console.error('Error saving the book:', err);
     }
   };
 
