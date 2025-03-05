@@ -1,5 +1,5 @@
-import User from "../models/User";
-import { signToken, AuthenticationError } from "../services/auth"; // import the signToken function and AuthenticationError class
+import User from "../models/User.js";
+import { signToken, AuthenticationError } from "../services/auth.js"; // import the signToken function and AuthenticationError class
 
 // Define the context interface
 interface Context {
