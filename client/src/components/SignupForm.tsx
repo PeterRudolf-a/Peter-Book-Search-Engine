@@ -10,7 +10,7 @@ const SignupForm = ({ handleModalClose }: { handleModalClose: () => void }) => {
   // set initial form state
   const [userFormData, setUserFormData] = useState<User>({ username: '', email: '', password: '', savedBooks: [] });
   // set state for form validation
-  const [validated] = useState(false);
+  const [validated, setValidated] = useState(false);
   // set state for alert
   const [showAlert, setShowAlert] = useState(false);
 
@@ -28,23 +28,22 @@ const SignupForm = ({ handleModalClose }: { handleModalClose: () => void }) => {
     // check if form has everything (as per react-bootstrap docs)
     const form = event.currentTarget;
     if (form.checkValidity() === false) {
-      event.preventDefault();
       event.stopPropagation();
+      setValidated(true);
+    } else {
+      setValidated(false);
     }
-
     try {
       // Execute the ADD_USER mutation
       const { data } = await addUser({
-        variables: { input: {...userFormData} },
+        variables: { input: { ...userFormData } },
       });
-
-      Auth.login(data.addUser.token); // Log in the user
       handleModalClose(); // Close the modal
+      Auth.login(data.addUser.token); // Log in the user
     } catch (err) {
       console.error(err);
       setShowAlert(true); // Show alert if there is an error
     }
-
     // Reset form data after submission
     setUserFormData({
       username: '',
