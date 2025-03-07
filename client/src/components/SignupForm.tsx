@@ -35,16 +35,11 @@ const SignupForm = ({ handleModalClose }: { handleModalClose: () => void }) => {
     try {
       // Execute the ADD_USER mutation
       const { data } = await addUser({
-        variables: { ...userFormData },
+        variables: { input: {...userFormData} },
       });
 
-      if (data?.addUser?.token) {
-        const { token } = data.addUser;
-        Auth.login(token); // Log the user in
-        handleModalClose(); // Close the modal after successful signup
-      } else {
-        throw new Error('Something went wrong!');
-      }
+      Auth.login(data.addUser.token); // Log in the user
+      handleModalClose(); // Close the modal
     } catch (err) {
       console.error(err);
       setShowAlert(true); // Show alert if there is an error
