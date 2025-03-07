@@ -11,38 +11,29 @@ interface JwtPayload {
 }
 
 // Verify the JWT token
-export const authenticateToken = async (req: Request): Promise<JwtPayload | null> => {
-  const authHeader = req.headers.authorization; // Get the authorization header
-
-  // If the token is missing, throw an error
-  if (!authHeader) {
-    throw new AuthenticationError('Authorization token missing');
+export const authenticateToken = ({ req }: { req: Request }) => {
+  // allows token to be sent via req.body, req.query, or headers
+  let token = req.body.token || req.query.token || req.headers.authorization;
+  if (req.headers.authorization) {
+    token = token.split(' ').pop().trim();
   }
-
-  // Split the token to get the actual token
-  const token = authHeader.split(' ')[1];
-
-  // If the token is missing, throw an error
   if (!token) {
-    throw new AuthenticationError('Authorization token malformed');
+    return req;
   }
-
-  const secretKey = process.env.JWT_SECRET_KEY || '';
-
   try {
-    const decoded = jwt.verify(token, secretKey) as JwtPayload;
-    return decoded;  // Return the user from the decoded token
+    const { data }: any = jwt.verify(token, process.env.JWT_SECRET_KEY || '', { maxAge: '2hr' });
+    req.user = data as JwtPayload;
   } catch (err) {
-    throw new AuthenticationError('Invalid or expired token');
+    console.log('Invalid token');
   }
+  return req;
 };
 
 // Sign a new JWT token
-export const signToken = (username: string, email: string, _id: unknown): string => {
+export const signToken = (username: string, email: string, _id: unknown) => {
   const payload = { username, email, _id };
-  const secretKey = process.env.JWT_SECRET_KEY || '';
-
-  return jwt.sign(payload, secretKey, { expiresIn: '1h' });
+  const secretKey: any = process.env.JWT_SECRET_KEY;
+  return jwt.sign({data: payload}, secretKey, { expiresIn: '2h' });
 };
 
 // Custom error class for authentication errors that extends the GraphQLError class
@@ -51,4 +42,14 @@ export class AuthenticationError extends GraphQLError {
     super(message, undefined, undefined, undefined, ['UNAUTHENTICATED']);
     Object.defineProperty(this, 'name', { value: 'AuthenticationError' });
   }
-}
+};
+
+/*export const createApolloContext = async ({ req }: { req: Request }) => {
+  try {
+   const authHeader = req?.headers?.authorization; // Get the authorization header
+
+   if (!authHeader) {
+     return {};
+   }
+  }
+};*/
